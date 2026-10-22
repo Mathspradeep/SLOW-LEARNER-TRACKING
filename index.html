@@ -342,6 +342,19 @@ groups=function(){const g={};entries.filter(e=>(!R.cls||e.cls===R.cls)&&matchF(e
 const _rv2=repView;
 repView=function(m){_rv2(m);const c=$("#rc");if(!c)return;c.closest(".grid").insertAdjacentHTML("beforeend",fbHTML());fbBind(()=>render())};
 </script>
+<script>
+const _ev5=entryView;
+entryView=function(m){_ev5(m);const w=$("#week");if(!w)return;
+ w.insertAdjacentHTML("beforeend",'<option value="__new">＋ Add new week…</option>');
+ const showNW=()=>{if($("#nwbox"))return;const box=document.createElement("div");box.id="nwbox";box.className="msg";
+  box.innerHTML=`<b>Add a new week</b> <span class="mu">(it will be Week ${WEEKS.length+1} and will appear for all faculty)</span><div class="grid" style="margin-top:6px"><div><label>Week starts</label><input type="date" id="nw_a"></div><div><label>Week ends</label><input type="date" id="nw_b"></div></div><div class="row" style="margin-top:8px"><button class="b p sm" id="nw_s">Save week</button><button class="b sm" id="nw_c">Cancel</button></div>`;
+  w.closest(".grid").after(box);
+  $("#nw_c").onclick=()=>box.remove();
+  $("#nw_s").onclick=async()=>{const a=$("#nw_a").value,b=$("#nw_b").value;if(!a||!b||b<a){alert("Choose a valid start and end date.");return}
+   const n=WEEKS.length+1;const list=WEEKS.filter(x=>x.n>4).concat([{n,a,b}]);
+   try{await fs.collection("settings").doc("weeks").set({list});WEEKS.length=4;list.forEach(x=>WEEKS.push(x));F.week=n;F.date=a;entryView(m)}catch(x){alert("Could not save the week: "+(x.message||x.code))}}};
+ w.onchange=e=>{if(e.target.value==="__new"){e.target.value=F.week;showNW();return}F.week=+e.target.value;F.date=WEEKS[F.week-1].a;entryView(m)}};
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
