@@ -278,6 +278,24 @@ repView=function(m){_rv(m);const g=groups().find(x=>x.k===R.open);const bar=$("#
  m.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>editEntry(b.dataset.ed));
  m.querySelectorAll("[data-dl]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this session entry permanently?")){try{await db.collection("sessions").doc(b.dataset.dl).delete()}catch(x){alert("Delete failed: "+x.message)}}})};
 </script>
+<script>
+const SUBJ=[[1, "24UTA161", "HERITAGE OF TAMIL", "*"],[1, "24UEN171", "Communicative English for Engineers and Professionals – I", "*"],[1, "24UMA161", "CALCULUS AND MATRIX ALGEBRA", "CSE,CYS,AI&ML,AI&DS,IT,CSBS,MECH,R&A"],[1, "24UMA162", "CALCULUS AND LAPLACE TRANSFORMS", "ECE"],[1, "24UPY171", "PHYSICS FOR ENGINEERING AND TECHNOLOGY", "CSE,CYS,AI&ML,AI&DS,IT,CSBS,ECE"],[1, "24UPY172", "ENGINEERING PHYSICS", "MECH,R&A"],[1, "24UCH171", "ENGINEERING CHEMISTRY", "CSE,CYS,AI&ML,AI&DS,IT,CSBS"],[1, "24UCH172", "APPLIED CHEMISTRY", "ECE"],[1, "24UCH173", "MATERIALS CHEMISTRY", "MECH,R&A"],[1, "24UCS172", "COMPUTATIONAL THINKING", "*"],[1, "24UCS171", "PYTHON PROGRAMMING", "*"],[2, "24UTA261", "TAMIL AND TECHNOLOGY", "*"],[2, "24UEN271", "Communicative English for Engineers and Professionals – II", "*"],[2, "24UMA261", "STATISTICS AND NUMERICAL METHODS", "CSE,CYS,AI&ML,AI&DS,IT,CSBS,MECH,R&A"],[2, "24UMA262", "COMPLEX VARIABLES AND ORDINARY DIFFERENTIAL EQUATION", "ECE"],[2, "24UPY261", "PHYSICS FOR INFORMATION SCIENCE", "CSE,CYS,AI&ML,AI&DS,IT,CSBS"],[2, "24UPY262", "PHYSICS FOR ELECTRONICS ENGINEERING", "ECE"],[2, "24UPY263", "PHYSICS FOR MECHANICAL ENGINEERING", "MECH,R&A"],[2, "24UCH261", "ENVIRONMENTAL SCIENCES AND SUSTAINABILITY", "*"],[2, "24UEC272", "BASIC ELECTRICAL AND ELECTRONICS ENGINEERING", "CSE,CYS,AI&ML,AI&DS,IT,CSBS"],[2, "24UEC273", "CIRCUIT ANALYSIS", "ECE"],[2, "24UEC271", "ELECTRICAL AND INSTRUMENTATION ENGINEERING", "MECH,R&A"],[2, "24UCS271", "PROGRAMMING IN C", "*"]];
+const progOf=c=>(c||"").replace(/-[A-C]$/,"");
+const subOK=(s,c)=>!c||s[3]==="*"||s[3].split(",").includes(progOf(c));
+const _ev3=entryView;
+entryView=function(m){_ev3(m);const inp=$("#subj");if(!inp)return;
+ const sel=document.createElement("select");sel.id="subSel";sel.style.marginBottom="6px";inp.before(sel);
+ const build=()=>{const L=SUBJ.filter(s=>subOK(s,F.cls));const cur=SUBJ.find(s=>s[1]===F.code&&s[2]===F.subj);
+  sel.innerHTML=`<option value="">Select subject${F.cls?" for "+esc(F.cls):""}</option>`+[1,2].map(n=>{const o=L.filter(s=>s[0]===n);return o.length?`<optgroup label="Semester ${n==1?"I":"II"}">${o.map(s=>`<option value="${s[1]}">${s[1]} – ${esc(s[2])}</option>`).join("")}</optgroup>`:""}).join("")+`<option value="__o">Other (type manually)</option>`;
+  if(cur&&L.includes(cur)){sel.value=cur[1];inp.style.display="none"}else if(F.subj){sel.value="__o";inp.style.display=""}else{sel.value="";inp.style.display="none"}};
+ build();
+ sel.onchange=()=>{const v=sel.value;
+  if(v==="__o"){F.subj="";inp.value="";inp.style.display="";inp.focus();return}
+  const s=SUBJ.find(x=>x[1]===v);
+  if(!s){F.subj="";F.code="";inp.value="";$("#x_code").value="";inp.style.display="none";return}
+  F.subj=s[2];F.code=s[1];F.ysem=s[0]===1?"I/I":"I/II";inp.value=s[2];$("#x_code").value=s[1];$("#x_ysem").value=F.ysem;inp.style.display="none"};
+ $("#cls").addEventListener("change",build)};
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
