@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>Coaching Class Tracker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -67,7 +68,7 @@ auth.onAuthStateChanged(u=>{if(unsub){unsub();unsub=null}if(unsub2){unsub2();uns
  if(!u){uid=null;return loginUI()}
  if(DOMAIN&&!(u.email||"").toLowerCase().endsWith("@"+DOMAIN)){auth.signOut();return loginUI("Please use your @"+DOMAIN+" account.")}
  uid=u.uid;F.fac=F.fac||u.displayName||"";
- unsub2=fs.collection("settings").doc("weeks").onSnapshot(d=>{WEEKS.length=4;((d.data()||{}).list||[]).filter(w=>w.n>4).sort((x,y)=>x.n-y.n).forEach(w=>WEEKS.push(w));if(view!=="entry")render()},e=>{});unsub=fs.collection("sessions").onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));if(view!=="entry")render()},e=>{msg="Data error: "+e.message;render()});render()});
+ unsub2=fs.collection("settings").doc("weeks").onSnapshot(d=>{WEEKS.length=4;((d.data()||{}).list||[]).filter(w=>w.n>4).sort((x,y)=>x.n-y.n).forEach(w=>WEEKS.push(w));if(view!=="entry")render()},e=>{});unsub=(isAdmin()?fs.collection("sessions"):fs.collection("sessions").where("by","==",uid)).onSnapshot(s=>{entries=s.docs.map(d=>({id:d.id,...d.data()}));if(view!=="entry")render()},e=>{msg="Data error: "+e.message;render()});render()});
 
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{view=b.dataset.v;document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));render()});
 
@@ -129,7 +130,7 @@ async function save(){const e=[];if(!F.fac.trim())e.push("faculty name");if(!F.c
  if(e.length){$("#fm").innerHTML=`<div class="msg err">Please add: ${e.join(", ")}.</div>`;return}
  if(!db){$("#fm").innerHTML='<div class="msg err">Not connected – open in claude.ai while signed in.</div>';return}
  try{const id="e"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
- await db.collection("sessions").doc(id).set({fac:F.fac.trim(),cls:F.cls,week:F.week,date:F.date,hour:F.hour,period:F.period,subj:F.subj.trim(),topic:F.topic.trim(),stu:F.stu,photos:F.photos,by:uid,at:Date.now()});
+ await db.collection("sessions").doc(id).set({fac:F.fac.trim(),cls:F.cls,week:F.week,date:F.date,hour:F.hour,period:F.period,subj:F.subj.trim(),topic:F.topic.trim(),stu:F.stu,photos:F.photos,by:uid,byEmail:(auth.currentUser||{}).email||"",at:Date.now()});
  F={...F,topic:"",stu:F.stu.map(s=>({...s,p:true})),photos:[]};F.date=nextDate();msg="✔ Entry submitted. Subject, course details and the student list are kept for the next date: change the date if needed, mark attendance, add the new topic and photos.";entryView($("#m"));msg=""}catch(x){$("#fm").innerHTML=`<div class="msg err">Save failed: ${esc(x.message||x.code)}</div>`}}
 
 function dashView(m){const rows=CLASSES.map(c=>`<tr><td class="l"><b>${esc(c)}</b></td>${WEEKS.map(w=>{const n=entries.filter(e=>e.cls===c&&e.week===w.n).length;return `<td class="${n?"c1":"c0"}">${n||"–"}</td>`}).join("")}<td>${entries.filter(e=>e.cls===c).length}</td></tr>`).join("");
@@ -188,7 +189,7 @@ save=async function(){const e=[];if(!F.fac.trim())e.push("faculty name");if(!F.c
  if(e.length){$("#fm").innerHTML=`<div class="msg err">Please add: ${e.join(", ")}.</div>`;return}
  if(!db){$("#fm").innerHTML='<div class="msg err">Not connected – open in claude.ai while signed in.</div>';return}
  try{const id="e"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
- await db.collection("sessions").doc(id).set({fac:F.fac.trim(),desig:F.desig||"",code:F.code.trim(),ysem:F.ysem||"I/II",mode:F.mode||"Coaching Class",impl:F.impl||"",strat:F.strat||"",cls:F.cls,week:F.week,date:F.date,hour:F.hour,period:F.period,subj:F.subj.trim(),topic:F.topic.trim(),stu:F.stu,photos:F.photos,by:uid,at:Date.now()});
+ await db.collection("sessions").doc(id).set({fac:F.fac.trim(),desig:F.desig||"",code:F.code.trim(),ysem:F.ysem||"I/II",mode:F.mode||"Coaching Class",impl:F.impl||"",strat:F.strat||"",cls:F.cls,week:F.week,date:F.date,hour:F.hour,period:F.period,subj:F.subj.trim(),topic:F.topic.trim(),stu:F.stu,photos:F.photos,by:uid,byEmail:(auth.currentUser||{}).email||"",at:Date.now()});
  F={...F,topic:"",stu:F.stu.map(s=>({...s,p:true})),photos:[]};F.date=nextDate();msg="✔ Entry submitted. Subject, course details and the student list are kept for the next date: change the date if needed, mark attendance, add the new topic and photos.";entryView($("#m"));msg=""}catch(x){$("#fm").innerHTML=`<div class="msg err">Save failed: ${esc(x.message||x.code)}</div>`}};
 
 function groups(){const g={};entries.filter(e=>!R.cls||e.cls===R.cls).forEach(e=>{const k=[e.cls,e.subj,e.fac].join("|").toLowerCase();(g[k]=g[k]||[]).push(e)});return Object.entries(g).map(([k,a])=>({k,a:a.sort((x,y)=>x.date<y.date?-1:1)}))}
@@ -203,7 +204,8 @@ function pagesHTML(g,img){const I=info(g);const N=27;
  const th=a=>`<tr>${a.map(x=>`<th>${x}</th>`).join("")}</tr>`;
  const ch=a=>{const o=[];for(let i=0;i<a.length;i+=N)o.push([a.slice(i,i+N),i]);return o.length?o:[[[],0]]};
  const pg=c=>`<div class="pg">${c}</div>`;
- const p1=ch(I.rows).map(([r,o],k,A)=>pg(`${head}${inf("CORRECTIVE ACTION FOR SLOW LEARNERS")}<h4 class="ct" style="margin:4px 0">LIST OF SLOW LEARNERS</h4><table class="k">${th(["S.NO","REGISTER NUMBER","STUDENT NAME","INTERNAL MARK"])}${r.map((s,i)=>`<tr><td>${o+i+1}</td><td>${esc(s.r)}</td><td class="l">${esc(s.n)}</td><td style="color:#c00;font-weight:bold">${esc(s.m)}</td></tr>`).join("")}</table>${sig("FACULTY INCHARGE")}`)).join("");
+ const MC=markCols(I.rows);
+ const p1=ch(I.rows).map(([r,o],k,A)=>pg(`${head}${inf("CORRECTIVE ACTION FOR SLOW LEARNERS")}<h4 class="ct" style="margin:4px 0">LIST OF SLOW LEARNERS</h4><table class="k">${th(["S.NO","REGISTER NUMBER","STUDENT NAME",...MC.map(k=>MH[k])])}${r.map((s,i)=>`<tr><td>${o+i+1}</td><td>${esc(s.r)}</td><td class="l">${esc(s.n)}</td>${MC.map(k=>`<td style="color:#c00;font-weight:bold">${esc(k==="m"?s.m:(s.mk||{})[k])}</td>`).join("")}</tr>`).join("")}</table>${sig("FACULTY INCHARGE")}`)).join("");
  const p2=ch(g.a).map(([r,o],k,A)=>pg(`${head}${inf("SLOW LEARNERS COACHING SCHEDULE")}<table class="k">${th(["S.NO","DATE","SUBJECT NAME","MODE OF COACHING (Assignment/ Retest/ Seminar/ Coaching Class)"])}${r.map((e,i)=>`<tr><td>${o+i+1}</td><td>${fd(e.date)}</td><td>${esc(e.subj)}</td><td>${esc(e.mode||"Coaching Class")}</td></tr>`).join("")}</table>${sig("ACADEMIC COORDINATOR")}`)).join("");
  const cw=g.a.length>4;const DG=[];for(let i=0;i<g.a.length;i+=10)DG.push(g.a.slice(i,i+10));
  const p3=DG.map(dg=>ch(I.rows).map(([r,o],k,A)=>pg(`${head}${inf("SLOW LEARNERS ATTENDANCE")}<table class="k"><tr><th rowspan="2">S.NO</th><th rowspan="2">REGISTER NO</th><th rowspan="2">STUDENT NAME</th><th colspan="${dg.length}">STUDENT SIGNATURE WITH DATE${cw?" (P = Present, A = Absent)":""}</th></tr><tr>${dg.map(e=>`<th style="font-size:${cw?9.5:12}px;padding:2px 1px">${cw?fd(e.date).slice(0,5):fd(e.date)}</th>`).join("")}</tr>${r.map((s,i)=>`<tr><td>${o+i+1}</td><td>${esc(s.r)}</td><td class="l">${esc(s.n)}</td>${dg.map(e=>{const v=stat(e,s);return `<td style="color:${v=="A"?"#c00":"#070"};font-weight:bold;${cw?"padding:2px 0":""}">${cw?v:(v=="P"?"Present":v=="A"?"Absent":"-")}</td>`}).join("")}</tr>`).join("")}</table>${sig("FACULTY INCHARGE","*Note: Mark Statement have to be attached for Assignment/ Retest/ Seminar (if conducted)")}`)).join("")).join("");
@@ -234,7 +236,7 @@ async function mkPdf(g){if(typeof html2canvas==="undefined"||!(window.jspdf&&win
   return pdf.output("blob")}finally{w.remove()}}
 
 async function mkDocx(g){if(typeof docx==="undefined")throw new Error("Word library did not load");
- const{Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,AlignmentType,ImageRun,ShadingType,VerticalAlign}=docx;const I=info(g);const C_=AlignmentType.CENTER;
+ const{Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,WidthType,AlignmentType,ImageRun,ShadingType,VerticalAlign}=docx;const I=info(g);const C_=AlignmentType.CENTER;const MC=markCols(I.rows);
  const P=(t,o={})=>new Paragraph({keepNext:o.kn,alignment:o.al,spacing:{after:o.sp??60},children:String(t).split("\n").map((l,i)=>new TextRun({text:l,bold:o.b,size:o.sz||21,font:"Times New Roman",color:o.c,break:i?1:0}))});
  const Cl=(t,w,o={})=>new TableCell({width:{size:w,type:WidthType.DXA},rowSpan:o.rs,columnSpan:o.cs,verticalAlign:VerticalAlign.CENTER,margins:{top:40,bottom:40,left:o.mx??80,right:o.mx??80},children:o.kids||[P(t,{al:o.al===undefined?C_:o.al,b:o.b,sz:o.sz,sp:0,c:o.c})]});
  const T=(rows,ws)=>new Table({width:{size:ws.reduce((a,b)=>a+b),type:WidthType.DXA},columnWidths:ws,rows:rows.map(r=>new TableRow({children:r}))});
@@ -247,7 +249,7 @@ async function mkDocx(g){if(typeof docx==="undefined")throw new Error("Word libr
  const sp=()=>P("",{sp:100});const rowH=a=>a.map(x=>x);
  const tbl=(hd,ws,rows,hs=20)=>T([hd.map((h,i)=>Cl(h,ws[i],{b:1,sz:hs,mx:hs<20?20:80})),...rows],ws);
  const pg=(ch,f)=>({properties:{page:{size:{width:11906,height:16838},margin:{top:720,bottom:720,left:720,right:720,header:360,footer:300}}},headers:{default:new docx.Header({children:[head()]})},footers:{default:new docx.Footer({children:f})},children:ch});
- const S1=pg([...inf("CORRECTIVE ACTION FOR SLOW LEARNERS"),P("LIST OF SLOW LEARNERS",{al:C_,b:1,sp:80}),tbl(["S.NO","REGISTER NUMBER","STUDENT NAME","INTERNAL MARK"],[1000,3000,4200,2200],I.rows.map((s,i)=>[Cl(String(i+1),1000),Cl(s.r,3000),Cl(s.n,4200,{al:AlignmentType.LEFT}),Cl(s.m,2200,{c:"CC0000",b:1})])) ],[sig("FACULTY INCHARGE")]);
+ const S1=pg([...inf("CORRECTIVE ACTION FOR SLOW LEARNERS"),P("LIST OF SLOW LEARNERS",{al:C_,b:1,sp:80}),tbl(["S.NO","REGISTER NUMBER","STUDENT NAME",...MC.map(k=>MH[k])],[800,2300,3100,...MC.map(()=>Math.floor(4200/MC.length))],I.rows.map((s,i)=>[Cl(String(i+1),800),Cl(s.r,2300),Cl(s.n,3100,{al:AlignmentType.LEFT}),...MC.map(k=>Cl(k==="m"?s.m:(s.mk||{})[k],Math.floor(4200/MC.length),{c:"CC0000",b:1}))]),MC.length>3?16:20) ],[sig("FACULTY INCHARGE")]);
  const S2=pg([...inf("SLOW LEARNERS COACHING SCHEDULE"),tbl(["S.NO","DATE","SUBJECT NAME","MODE OF COACHING (Assignment/ Retest/ Seminar/ Coaching Class)"],[900,1900,3300,4300],g.a.map((e,i)=>[Cl(String(i+1),900),Cl(fd(e.date),1900),Cl(e.subj,3300),Cl(e.mode||"Coaching Class",4300)])) ],[sig("ACADEMIC COORDINATOR")]);
  const nd=g.a.length,cw=nd>4,dw=Math.floor((cw?5450:4100)/nd),ws3=cw?[650,1700,2600,...g.a.map(()=>dw)]:[800,2000,3500,...g.a.map(()=>dw)];
  const S3=pg([...inf("SLOW LEARNERS ATTENDANCE"),...(cw?[P("STUDENT SIGNATURE WITH DATE  (P = Present, A = Absent)",{al:C_,b:1,sz:20,sp:60})]:[]),tbl(["S.NO","REGISTER NO","STUDENT NAME",...g.a.map(e=>cw?fd(e.date).slice(0,5):"SIGNATURE WITH DATE\n"+fd(e.date))],ws3,I.rows.map((s,i)=>[Cl(String(i+1),ws3[0],cw?{mx:20}:{}),Cl(s.r,ws3[1],cw?{mx:30}:{}),Cl(s.n,ws3[2],{al:AlignmentType.LEFT,...(cw?{mx:40}:{})}),...g.a.map(e=>{const v=stat(e,s);return Cl(cw?v:(v=="P"?"Present":v=="A"?"Absent":"-"),dw,{b:1,c:v=="A"?"CC0000":"007700",...(cw?{mx:20}:{})})})]),cw?15:20)],[sig("FACULTY INCHARGE"),P("*Note: Mark Statement have to be attached for Assignment/ Retest/ Seminar (if conducted)",{sz:18})]);
@@ -282,7 +284,7 @@ save=async function(){if(!F.editId)return _sv2();
  F={...F,editId:null,subj:"",topic:"",stu:[],photos:[],impl:"",strat:""};R.open=null;view="rep";document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.v==="rep"));render();alert("Entry updated.")}catch(x){$("#fm").innerHTML=`<div class="msg err">Update failed: ${esc(x.message||x.code)}</div>`}};
 const _rv=repView;
 repView=function(m){_rv(m);const g=groups().find(x=>x.k===R.open);const bar=$("#dw");if(!g||!bar)return;
- bar.parentElement.insertAdjacentHTML("beforebegin",`<div class="noprint" style="margin:8px 0"><b>Sessions in this report</b>${g.a.map(e=>`<div class="stu"><span>${fd(e.date)} · ${esc(e.hour)} · ${esc(e.period)} · ${esc(e.topic)}</span><span class="t"><button data-ed="${e.id}">Edit</button><button data-dl="${e.id}">Delete</button></span></div>`).join("")}</div>`);
+ bar.parentElement.insertAdjacentHTML("beforebegin",`<div class="noprint" style="margin:8px 0"><b>Sessions in this report</b>${g.a.map(e=>`<div class="stu"><span>${fd(e.date)} · ${esc(e.hour)} · ${esc(e.period)} · ${esc(e.topic)}</span><span class="t">${e.by===uid?`<button data-ed="${e.id}">Edit</button><button data-dl="${e.id}">Delete</button>`:`<span class="mu">${esc(e.byEmail||e.fac)} · view only</span>`}</span></div>`).join("")}</div>`);
  m.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>editEntry(b.dataset.ed));
  m.querySelectorAll("[data-dl]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this session entry permanently?")){try{await db.collection("sessions").doc(b.dataset.dl).delete()}catch(x){alert("Delete failed: "+x.message)}}})};
 </script>
@@ -355,6 +357,102 @@ entryView=function(m){_ev5(m);const w=$("#week");if(!w)return;
    try{await fs.collection("settings").doc("weeks").set({list});WEEKS.length=4;list.forEach(x=>WEEKS.push(x));F.week=n;F.date=a;entryView(m)}catch(x){alert("Could not save the week: "+(x.message||x.code))}}};
  w.onchange=e=>{if(e.target.value==="__new"){e.target.value=F.week;showNW();return}F.week=+e.target.value;F.date=WEEKS[F.week-1].a;entryView(m)}};
 </script>
+<script>
+/* Admin accounts that can open the History tab (also set the same emails in the Firestore rules) */
+const ADMINS=["pradeepkumar.t@kgkite.ac.in","vaanmathi.m@kgkite.ac.in","hodsh@kgkite.ac.in"];
+const isAdmin=()=>{const u=auth.currentUser;return !!(u&&u.email&&ADMINS.map(x=>x.toLowerCase()).includes(u.email.toLowerCase()))};
+function logAct(action,d={}){try{const u=auth.currentUser;if(!u)return;fs.collection("logs").add({t:Date.now(),uid:u.uid,email:u.email||"",name:u.displayName||"",action,cls:d.cls||"",subj:d.subj||"",date:d.date||"",detail:d.detail||""}).catch(()=>{})}catch(e){}}
+try{const DR=firebase.firestore.DocumentReference.prototype;
+ [["set","submit"],["update","edit"],["delete","delete"]].forEach(([k,act])=>{const o=DR[k];DR[k]=function(...a){const pr=o.apply(this,a);const path=this.path||"",id=this.id;
+  try{if(path.startsWith("sessions/")){const e=entries.find(x=>x.id===id)||{};const d=(a[0]&&typeof a[0]==="object")?a[0]:{};pr.then(()=>logAct(act,{cls:d.cls||e.cls,subj:d.subj||e.subj,date:d.date||e.date,detail:(d.fac||e.fac||"")+(act==="delete"?" (entry removed)":"")})).catch(()=>{})}
+   else if(path==="settings/weeks"&&k==="set"){const L=(a[0]&&a[0].list)||[];const w=L[L.length-1]||{};pr.then(()=>logAct("week_add",{detail:"Week "+w.n+": "+w.a+" to "+w.b})).catch(()=>{})}}catch(e){}
+  return pr}})}catch(e){}
+function navHist(){if($("#hbtn"))return;const b=document.createElement("button");b.id="hbtn";b.dataset.v="hist";b.textContent="History";
+ b.onclick=()=>{view="hist";HLoaded=false;document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));render()};document.querySelector("nav").appendChild(b)}
+auth.onAuthStateChanged(u=>{const b=$("#hbtn");if(b)b.remove();if(!u)return;
+ if(DOMAIN&&!(u.email||"").toLowerCase().endsWith("@"+DOMAIN))return;
+ if(isAdmin())navHist();logAct("login")});
+let HL=[],HF={act:"",q:"",from:"",to:""},HERR="",HLoaded=false;
+const AL={login:"Signed in",submit:"New entry",edit:"Edited entry",delete:"Deleted entry",week_add:"Added week"};
+const isoD=t=>{const d=new Date(t);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+async function loadHist(){try{const s=await fs.collection("logs").orderBy("t","desc").limit(1000).get();HL=s.docs.map(d=>d.data());HERR=""}catch(e){HL=[];HERR="Cannot read the history: "+(e.message||e.code)+". Check that your email is in ADMINS and in the Firestore rules for the logs collection."}HLoaded=true}
+const hRows=()=>{const q=HF.q.trim().toLowerCase();return HL.filter(r=>(!HF.act||r.action===HF.act)&&(!HF.from||isoD(r.t)>=HF.from)&&(!HF.to||isoD(r.t)<=HF.to)&&(!q||[r.email,r.name,r.cls,r.subj,r.detail].join(" ").toLowerCase().includes(q)))};
+function histView(m){
+ m.innerHTML=`<div class="card"><h2>Activity history</h2><div class="grid"><div><label>Action</label><select id="ha"><option value="">All actions</option>${Object.entries(AL).map(([k,v])=>`<option value="${k}" ${HF.act===k?"selected":""}>${v}</option>`).join("")}</select></div><div><label>Search (person, class, subject)</label><input id="hq" value="${esc(HF.q)}"></div><div><label>From</label><input type="date" id="hf" value="${HF.from}"></div><div><label>To</label><input type="date" id="ht" value="${HF.to}"></div></div>
+ <div class="row" style="margin-top:8px"><button class="b sm" id="hr">Refresh</button><button class="b sm" id="hc">Download CSV</button><span class="mu" id="hn"></span></div>${HERR?`<div class="msg err">${esc(HERR)}</div>`:""}<div class="sc" id="hbody" style="margin-top:8px"></div></div>`;
+ const paint=()=>{const R=hRows();$("#hn").textContent=R.length+" record"+(R.length==1?"":"s")+(HL.length>=1000?" (latest 1000)":"");
+  $("#hbody").innerHTML=`<table><tr><th>Time</th><th class="l">Person</th><th>Action</th><th>Class</th><th class="l">Subject</th><th>Session date</th><th class="l">Detail</th></tr>${R.slice(0,500).map(r=>`<tr><td>${esc(new Date(r.t).toLocaleString("en-IN"))}</td><td class="l">${esc(r.name)}<br><span class="mu">${esc(r.email)}</span></td><td>${esc(AL[r.action]||r.action)}</td><td>${esc(r.cls)}</td><td class="l">${esc(r.subj)}</td><td>${r.date?fd(r.date):""}</td><td class="l">${esc(r.detail)}</td></tr>`).join("")}</table>`};
+ paint();
+ $("#ha").onchange=e=>{HF.act=e.target.value;paint()};$("#hq").oninput=e=>{HF.q=e.target.value;paint()};$("#hf").onchange=e=>{HF.from=e.target.value;paint()};$("#ht").onchange=e=>{HF.to=e.target.value;paint()};
+ $("#hr").onclick=async()=>{$("#hn").textContent="Loading…";await loadHist();histView(m)};
+ $("#hc").onclick=()=>{const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';save_("Time,Name,Email,Action,Class,Subject,Session date,Detail\n"+hRows().map(r=>[new Date(r.t).toLocaleString("en-IN"),r.name,r.email,AL[r.action]||r.action,r.cls,r.subj,r.date?fd(r.date):"",r.detail].map(q).join(",")).join("\n"),"activity-history.csv")}}
+const _r9=render;
+render=function(){if(view!=="hist")return _r9();if(!isAdmin()){view="entry";return _r9()}const m=$("#m");
+ if(HLoaded)return histView(m);m.innerHTML='<div class="card mu">Loading history…</div>';loadHist().then(()=>{if(view==="hist")histView(m)})};
+</script>
+<script>
+const MH={st1:"SLIP TEST I",st2:"SLIP TEST II",st3:"SLIP TEST III",st4:"SLIP TEST IV",in1:"INTERNAL I",in2:"INTERNAL II",m:"INTERNAL MARK"};
+const MKL={st1:"Slip I",st2:"Slip II",st3:"Slip III",st4:"Slip IV",in1:"Int I",in2:"Int II"};
+const MK_ORDER=["st1","st2","st3","st4","in1","in2"];
+function markCols(rows){const c=MK_ORDER.filter(k=>rows.some(s=>s.mk&&String(s.mk[k]??"")!==""));if(rows.some(s=>String(s.m||"")!==""))c.push("m");return c.length?c:["m"]}
+const TH=["S No","Name","REGISTER NUMBER","SLIP TEST I MARK","SLIP TEST II MARK","SLIP TEST III MARK","SLIP TEST IV MARK","INTERNAL I MARK","INTERNAL II MARK","ATTENDANCE (P/A)"];
+const tplRows=(n=75)=>{const R=[TH];for(let i=1;i<=n;i++)R.push([i,"","","","","","","","",""]);return R};
+const tplCsv=()=>"\uFEFF"+tplRows().map(r=>r.join(",")).join("\r\n");
+function tplXlsx(){if(typeof XLSX==="undefined")throw new Error("Excel library did not load");
+ const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet(tplRows());ws["!cols"]=[{wch:6},{wch:30},{wch:18},...Array(6).fill({wch:14}),{wch:16}];XLSX.utils.book_append_sheet(wb,ws,"Students");
+ const ins=XLSX.utils.aoa_to_sheet([["How to fill this template"],["1. Enter the Name and REGISTER NUMBER of each slow learner, one per row."],["2. Fill marks only in the columns you need (slip tests / internals). Leave the others empty."],["3. In ATTENDANCE (P/A) type P for present or A for absent for the date you are entering. Empty means present."],["4. Do not change the header names. Rows without a name are ignored."],["5. Save the file, then use 'Upload marks & attendance sheet' on the New entry page."]]);ins["!cols"]=[{wch:105}];XLSX.utils.book_append_sheet(wb,ins,"Instructions");
+ return new Blob([XLSX.write(wb,{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}
+function csvParse(t){t=t.replace(/^\uFEFF/,"");const d=/\t/.test(t.split(/\r?\n/)[0]||"")?"\t":",";const rows=[];let r=[],c="",q=false;
+ for(let i=0;i<t.length;i++){const ch=t[i];
+  if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=false}else c+=ch}
+  else if(ch=='"')q=true;else if(ch===d){r.push(c);c=""}else if(ch=="\n"||ch=="\r"){if(ch=="\r"&&t[i+1]=="\n")i++;r.push(c);rows.push(r);r=[];c=""}else c+=ch}
+ if(c!==""||r.length){r.push(c);rows.push(r)}return rows.map(x=>x.map(v=>String(v).trim()))}
+function roleOf(h){h=String(h||"").toLowerCase();const n=(h.match(/\b(iv|iii|ii|i|[1-4])\b/)||[])[1];const num=n?({i:1,ii:2,iii:3,iv:4}[n]||+n):0;
+ if(/slip/.test(h))return num?"st"+num:"";if(/internal/.test(h))return num&&num<3?"in"+num:"";if(/attend|status|present/.test(h))return "att";if(/name/.test(h))return "name";if(/reg|roll/.test(h))return "reg";if(/^s\.?\s?no|^sl\b|serial/.test(h))return "sno";if(/mark/.test(h))return "m";return ""}
+function addRows(rows,replace){rows=rows.filter(a=>a.some(c=>String(c??"").trim()!==""));if(!rows.length)return;
+ const roles=rows[0].map(roleOf);const hdr=roles.includes("name");if(replace)F.stu=[];
+ if(hdr){rows.slice(1).forEach(a=>{const g=k=>{const i=roles.indexOf(k);return i<0?"":String(a[i]??"").trim()};const n=g("name");if(!n||isNum(n))return;
+   const mk={};MK_ORDER.forEach(k=>{const v=g(k);if(v!=="")mk[k]=v});F.stu.push({r:g("reg"),n,m:g("m"),mk,p:!/^(a|ab|absent)$/i.test(g("att"))})})}
+ else rows.forEach(a0=>{const a=a0.map(c=>String(c??"").replace(/^["'\s]+|["'\s]+$/g,"")).filter(Boolean);if(!a.length||/^(s\.?\s?no|sl|name|roll|reg)/i.test(a[0]))return;
+   if(a.length>=4)a.shift();let r="",n="",m="";a.forEach((c,i)=>{if(isReg(c)){if(!r)r=c}else if(isNum(c)){if(i===0&&a.length>1)return;m=c}else if(!n)n=c});if(!n)return;F.stu.push({r,n,m,mk:{},p:true})});
+ stu()}
+addNames=function(t,replace){addRows(csvParse(t),replace)};
+stu=function(){const el=$("#stl");if(!el)return;
+ const lab=s=>MK_ORDER.filter(k=>s.mk&&String(s.mk[k]??"")!=="").map(k=>MKL[k]+" "+s.mk[k]).join(" · ");
+ el.innerHTML=F.stu.length?F.stu.map((s,i)=>`<div class="stu"><span>${i+1}. ${esc(s.r?s.r+" – ":"")}${esc(s.n)}${lab(s)?`<br><span class="mu">${esc(lab(s))}</span>`:""}</span><span class="t"><input data-m="${i}" value="${esc(s.m||"")}" placeholder="Mark" inputmode="numeric" style="width:64px;padding:4px 6px;margin-right:6px"><button class="P ${s.p?"on":""}" data-i="${i}" data-v="1">P</button><button class="A ${s.p?"":"on"}" data-i="${i}" data-v="0">A</button><button data-d="${i}" title="Remove">×</button></span></div>`).join(""):`<div class="stu mu">No students yet – upload the marks &amp; attendance sheet above.</div>`;
+ el.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{F.stu[+b.dataset.i].p=b.dataset.v==="1";stu()});
+ el.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{F.stu.splice(+b.dataset.d,1);stu()});
+ el.querySelectorAll("[data-m]").forEach(i=>i.oninput=()=>{F.stu[+i.dataset.m].m=i.value});
+ const p=F.stu.filter(s=>s.p).length;$("#cnt").textContent=F.stu.length?`— Present ${p} · Absent ${F.stu.length-p} · Total ${F.stu.length}`:""};
+const _ev6=entryView;
+entryView=function(m){_ev6(m);const nf=$("#nf");if(!nf)return;nf.accept=".csv,.txt,.xlsx,.xls";
+ nf.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(/\.xlsx?$/i.test(f.name)){if(typeof XLSX==="undefined")throw new Error("Excel reader did not load");const wb=XLSX.read(await f.arrayBuffer());addRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:""}),true)}else addNames(await f.text(),true)}catch(x){alert("Could not read the file: "+(x.message||x))}e.target.value=""};
+ const lab=nf.closest("label");lab.firstChild.nodeValue="Upload marks & attendance sheet (CSV / Excel)";
+ lab.parentElement.insertAdjacentHTML("beforeend",'<button class="b sm" id="tplc">⬇ Download template (CSV)</button><button class="b sm" id="tple">⬇ Download template (Excel)</button>');
+ $("#tplc").onclick=()=>save_(tplCsv(),"marks-attendance-template.csv");
+ $("#tple").onclick=()=>{try{save_(tplXlsx(),"marks-attendance-template.xlsx")}catch(x){alert(x.message)}};
+ m.querySelectorAll(".mu").forEach(d=>{if(/One name per line/.test(d.textContent))d.textContent="Upload the template with Name, Register Number, marks (slip tests / internals) and ATTENDANCE (P/A), or paste names one per line. Everyone is present by default – tap A for absentees."})};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const _g9=groups;groups=function(){const G=_g9();return R.fac?G.filter(x=>x.a[0].fac===R.fac):G};
+async function zipAll(){const G=groups();const s=$("#zst");if(!G.length){s.textContent="No reports to download.";return}
+ if(typeof JSZip==="undefined"){s.textContent="ZIP library did not load.";return}
+ const z=new JSZip();let i=0;
+ for(const g of G){i++;s.textContent="Preparing "+i+" of "+G.length+"…";const I=info(g);
+  try{z.file((String(i).padStart(3,"0")+"-"+g.a[0].cls+"-"+I.subj+"-"+I.fac+".docx").replace(/[^\w.\-]+/g,"_"),await mkDocx(g))}catch(x){z.file("ERROR-"+i+".txt",String(x.message||x))}}
+ s.textContent="Creating ZIP…";try{await save_(await z.generateAsync({type:"blob"}),"corrective-action-reports.zip");s.textContent="Done – "+G.length+" reports."}catch(x){s.textContent="Failed: "+(x.message||x)}}
+const _rv9=repView;
+repView=function(m){_rv9(m);const rc=$("#rc");if(!rc)return;const card=rc.closest(".card");
+ if(!isAdmin()){card.insertAdjacentHTML("afterbegin",'<div class="mu" style="margin-bottom:6px">You can see and edit only the reports you created.</div>');return}
+ const fac=[...new Set(entries.map(e=>e.fac).filter(Boolean))].sort();
+ rc.closest(".grid").insertAdjacentHTML("beforeend",`<div><label>Faculty (admin)</label><select id="rf"><option value="">All faculty</option>${fac.map(f=>`<option ${f===R.fac?"selected":""}>${esc(f)}</option>`).join("")}</select></div>`);
+ $("#rf").onchange=e=>{R.fac=e.target.value;repView(m)};
+ card.insertAdjacentHTML("afterbegin",'<div class="mu" style="margin-bottom:6px"><b>Admin view:</b> all faculty reports, read and download only.</div>');
+ card.insertAdjacentHTML("beforeend",'<div class="row" style="margin-top:10px"><button class="b p sm" id="za">Download all listed reports (ZIP of Word files)</button><span class="mu" id="zst"></span></div>');
+ $("#za").onclick=zipAll};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
