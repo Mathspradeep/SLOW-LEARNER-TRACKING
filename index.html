@@ -283,7 +283,7 @@ save=async function(){if(!F.editId)return _sv2();
  F={...F,editId:null,subj:"",topic:"",stu:[],photos:[],impl:"",strat:""};R.open=null;view="rep";document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.v==="rep"));render();alert("Entry updated.")}catch(x){$("#fm").innerHTML=`<div class="msg err">Update failed: ${esc(x.message||x.code)}</div>`}};
 const _rv=repView;
 repView=function(m){_rv(m);const g=groups().find(x=>x.k===R.open);const bar=$("#dw");if(!g||!bar)return;
- bar.parentElement.insertAdjacentHTML("beforebegin",`<div class="noprint" style="margin:8px 0"><b>Sessions in this report</b>${g.a.map(e=>`<div class="stu"><span>${fd(e.date)} · ${esc(e.hour)} · ${esc(e.period)} · ${esc(e.topic)}</span><span class="t">${e.by===uid?`<button data-ed="${e.id}">Edit</button><button data-dl="${e.id}">Delete</button>`:`<span class="mu">${esc(e.byEmail||e.fac)} · view only</span>`}</span></div>`).join("")}</div>`);
+ bar.parentElement.insertAdjacentHTML("beforebegin",`<div class="noprint" style="margin:8px 0"><b>Sessions in this report</b>${g.a.map(e=>`<div class="stu"><span>${fd(e.date)} · ${esc(e.hour)} · ${esc(e.period)} · ${esc(e.topic)}</span><span class="t">${(e.by===uid||isAdmin())?`<button data-ed="${e.id}">Edit</button><button data-dl="${e.id}">Delete</button>`:`<span class="mu">${esc(e.byEmail||e.fac)} · view only</span>`}</span></div>`).join("")}</div>`);
  m.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>editEntry(b.dataset.ed));
  m.querySelectorAll("[data-dl]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this session entry permanently?")){try{await db.collection("sessions").doc(b.dataset.dl).delete()}catch(x){alert("Delete failed: "+x.message)}}})};
 </script>
@@ -394,12 +394,12 @@ const MH={st1:"SLIP TEST I",st2:"SLIP TEST II",st3:"SLIP TEST III",st4:"SLIP TES
 const MKL={st1:"Slip I",st2:"Slip II",st3:"Slip III",st4:"Slip IV",in1:"Int I",in2:"Int II"};
 const MK_ORDER=["st1","st2","st3","st4","in1","in2"];
 function markCols(rows){const c=MK_ORDER.filter(k=>rows.some(s=>s.mk&&String(s.mk[k]??"")!==""));if(rows.some(s=>String(s.m||"")!==""))c.push("m");return c.length?c:["m"]}
-const TH=["S No","Name","REGISTER NUMBER","SLIP TEST I MARK","SLIP TEST II MARK","SLIP TEST III MARK","SLIP TEST IV MARK","INTERNAL I MARK","INTERNAL II MARK","ATTENDANCE (P/A)"];
-const tplRows=(n=75)=>{const R=[TH];for(let i=1;i<=n;i++)R.push([i,"","","","","","","","",""]);return R};
+const TH=["S No","Name","REGISTER NUMBER","SLIP TEST I MARK","SLIP TEST II MARK","SLIP TEST III MARK","SLIP TEST IV MARK","INTERNAL I MARK","INTERNAL II MARK","05/10/2026","06/10/2026","07/10/2026","08/10/2026","09/10/2026","10/10/2026","12/10/2026","13/10/2026","14/10/2026","15/10/2026"];
+const tplRows=(n=75)=>{const R=[TH];for(let i=1;i<=n;i++)R.push([i,...Array(TH.length-1).fill("")]);return R};
 const tplCsv=()=>"\uFEFF"+tplRows().map(r=>r.join(",")).join("\r\n");
 function tplXlsx(){if(typeof XLSX==="undefined")throw new Error("Excel library did not load");
- const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet(tplRows());ws["!cols"]=[{wch:6},{wch:30},{wch:18},...Array(6).fill({wch:14}),{wch:16}];XLSX.utils.book_append_sheet(wb,ws,"Students");
- const ins=XLSX.utils.aoa_to_sheet([["How to fill this template"],["1. Enter the Name and REGISTER NUMBER of each slow learner, one per row."],["2. Fill marks only in the columns you need (slip tests / internals). Leave the others empty."],["3. In ATTENDANCE (P/A) type P for present or A for absent for the date you are entering. Empty means present."],["4. Do not change the header names. Rows without a name are ignored."],["5. Save the file, then use 'Upload marks & attendance sheet' on the New entry page."]]);ins["!cols"]=[{wch:105}];XLSX.utils.book_append_sheet(wb,ins,"Instructions");
+ const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet(tplRows());ws["!cols"]=[{wch:6},{wch:30},{wch:18},...Array(6).fill({wch:12}),...Array(10).fill({wch:11})];XLSX.utils.book_append_sheet(wb,ws,"Students");
+ const ins=XLSX.utils.aoa_to_sheet([["How to fill this template"],["1. Enter the Name and REGISTER NUMBER of each slow learner, one per row."],["2. Fill marks only in the columns you need (slip tests / internals). Leave the others empty."],["3. Attendance for many days is in this same sheet: the last 10 columns are dates (dd/mm/yyyy). Replace the example dates with your coaching dates, then type P (present) or A (absent) for each student. A date column left completely empty is ignored."],["4. Do not change the header names. Rows without a name are ignored."],["5. Save the file, then use 'Upload marks & attendance sheet' on the New entry page."]]);ins["!cols"]=[{wch:105}];XLSX.utils.book_append_sheet(wb,ins,"Instructions");
  return new Blob([XLSX.write(wb,{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}
 function csvParse(t){t=t.replace(/^\uFEFF/,"");const d=/\t/.test(t.split(/\r?\n/)[0]||"")?"\t":",";const rows=[];let r=[],c="",q=false;
  for(let i=0;i<t.length;i++){const ch=t[i];
@@ -447,12 +447,110 @@ repView=function(m){_rv9(m);const rc=$("#rc");if(!rc)return;const card=rc.closes
  const fac=[...new Set(entries.map(e=>e.fac).filter(Boolean))].sort();
  rc.closest(".grid").insertAdjacentHTML("beforeend",`<div><label>Faculty (admin)</label><select id="rf"><option value="">All faculty</option>${fac.map(f=>`<option ${f===R.fac?"selected":""}>${esc(f)}</option>`).join("")}</select></div>`);
  $("#rf").onchange=e=>{R.fac=e.target.value;repView(m)};
- card.insertAdjacentHTML("afterbegin",'<div class="mu" style="margin-bottom:6px"><b>Admin view:</b> all faculty reports, read and download only.</div>');
+ card.insertAdjacentHTML("afterbegin",'<div class="mu" style="margin-bottom:6px"><b>Admin view:</b> all faculty reports – you can view, edit, delete and download them.</div>');
  card.insertAdjacentHTML("beforeend",'<div class="row" style="margin-top:10px"><button class="b p sm" id="za">Download all listed reports (ZIP of Word files)</button><span class="mu" id="zst"></span></div>');
  $("#za").onclick=zipAll};
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const ISO=(y,m,d)=>{y=+y;if(y<100)y+=2000;m=+m;d=+d;if(m<1||m>12||d<1||d>31)return "";return y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0")};
+function dateOf(h){h=String(h??"").trim();let x=h.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);if(x)return ISO(x[3],x[2],x[1]);x=h.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);return x?ISO(x[1],x[2],x[3]):""}
+function applyAtt(d){const a=F.att&&F.att[d];if(!a)return false;F.stu.forEach(s=>{const v=a[sk(s)];if(v!==undefined)s.p=v});return true}
+function gotoDate(d){const w=WEEKS.find(x=>d>=x.a&&d<=x.b);if(w)F.week=w.n;F.date=d;applyAtt(d);if(view==="entry")entryView($("#m"))}
+function jumpAtt(){if(!F.att)return;if(F.att[F.date]){applyAtt(F.date);stu();chips();return}gotoDate(Object.keys(F.att).sort()[0])}
+function chips(){const el=$("#attchips");if(!el)return;const D=F.att?Object.keys(F.att).sort():[];if(!D.length){el.innerHTML="";return}
+ const out=D.filter(d=>!WEEKS.some(w=>d>=w.a&&d<=w.b));
+ el.innerHTML=`<div class="mu" style="margin-bottom:4px">Attendance dates found in your sheet – tap a date to load its attendance:</div><div class="pills">${D.map(d=>`<span class="pill ${d===F.date?"on":""}" data-ad="${d}">${fd(d).slice(0,5)}</span>`).join("")}</div>${out.length?`<div class="mu err" style="margin-top:4px">Some dates are outside the defined weeks – add a new week first.</div>`:""}`;
+ el.querySelectorAll("[data-ad]").forEach(c=>c.onclick=()=>gotoDate(c.dataset.ad))}
+addRows=function(rows,replace){rows=rows.filter(a=>a.some(c=>String(c??"").trim()!==""));if(!rows.length)return;
+ const roles=rows[0].map(roleOf);const dc=rows[0].map(dateOf);const hdr=roles.includes("name");if(replace){F.stu=[];F.att=null}
+ if(hdr){const cols=dc.map((d,i)=>d&&!roles[i]?i:-1).filter(i=>i>=0);const has={},att={};
+  rows.slice(1).forEach(a=>{const g=k=>{const i=roles.indexOf(k);return i<0?"":String(a[i]??"").trim()};const n=g("name");if(!n||isNum(n))return;
+   const mk={};MK_ORDER.forEach(k=>{const v=g(k);if(v!=="")mk[k]=v});const s={r:g("reg"),n,m:g("m"),mk,p:!/^(a|ab|absent)$/i.test(g("att"))};F.stu.push(s);const key=sk(s);
+   cols.forEach(i=>{const v=String(a[i]??"").trim(),d=dc[i];if(v!=="")has[d]=true;(att[d]=att[d]||{})[key]=v===""||!/^(a|ab|absent|x|0)$/i.test(v)})});
+  Object.keys(att).forEach(d=>{if(!has[d])delete att[d]});if(Object.keys(att).length)F.att=Object.assign(F.att||{},att)}
+ else rows.forEach(a0=>{const a=a0.map(c=>String(c??"").replace(/^["'\s]+|["'\s]+$/g,"")).filter(Boolean);if(!a.length||/^(s\.?\s?no|sl|name|roll|reg)/i.test(a[0]))return;
+   if(a.length>=4)a.shift();let r="",n="",m="";a.forEach((c,i)=>{if(isReg(c)){if(!r)r=c}else if(isNum(c)){if(i===0&&a.length>1)return;m=c}else if(!n)n=c});if(!n)return;F.stu.push({r,n,m,mk:{},p:true})});
+ stu();if(F.att)jumpAtt()};
+const _ev7=entryView;
+entryView=function(m){_ev7(m);const nf=$("#nf");if(!nf)return;
+ nf.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(/\.xlsx?$/i.test(f.name)){if(typeof XLSX==="undefined")throw new Error("Excel reader did not load");const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});
+   const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""}).map(r=>r.map(c=>{if(c instanceof Date){const d=new Date(c.getTime()+12*3600e3);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear()}return String(c??"")}));addRows(rows,true)}
+   else addNames(await f.text(),true)}catch(x){alert("Could not read the file: "+(x.message||x))}e.target.value=""};
+ nf.closest("label").parentElement.insertAdjacentHTML("afterend",'<div id="attchips" class="noprint" style="margin:6px 0"></div>');chips();
+ const di=$("#date");if(di)di.addEventListener("change",()=>{if(applyAtt(F.date)){stu();chips()}})};
+const _sv7=save;
+save=async function(){const was=F.editId,n=F.photos.filter(Boolean).length,pd=F.date;await _sv7();
+ if(!was&&F.att&&n&&F.photos.filter(Boolean).length===0&&view==="entry"){const nx=Object.keys(F.att).sort().find(d=>d>pd);msg="✔ Entry submitted. Attendance for the next date is loaded from your sheet.";if(nx)gotoDate(nx);else{applyAtt(F.date);entryView($("#m"))}msg=""}};
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script>
+/* ===== v2: single-sheet template/upload + editable report ===== */
+/* 1) Template: marks + multi-day attendance + instructions all in ONE sheet */
+tplXlsx=function(){if(typeof XLSX==="undefined")throw new Error("Excel library did not load");
+ const R0=tplRows();
+ const NOTE=["HOW TO FILL THIS SHEET (everything is in this one sheet)","1. Type the Name and REGISTER NUMBER of each slow learner, one per row.","2. Fill marks only in the columns you need (slip tests / internals). Leave the others empty.","3. Attendance for many days is in this same sheet: the last 10 columns are dates (dd/mm/yyyy). Replace them with your coaching dates, then type P or A for each student. An empty date column is ignored.","4. Do not change the header names. Rows without a name are ignored.","5. Save, then use the upload button on the New entry page."];
+ R0.forEach((r,i)=>r.push("",i<NOTE.length?NOTE[i]:""));
+ const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(R0);
+ ws["!cols"]=[{wch:6},{wch:30},{wch:18},...Array(6).fill({wch:12}),...Array(10).fill({wch:11}),{wch:3},{wch:90}];
+ XLSX.utils.book_append_sheet(wb,ws,"Marks & Attendance");
+ return new Blob([XLSX.write(wb,{bookType:"xlsx",type:"array"})],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})};
+
+/* 2) Upload: if a workbook has several sheets (e.g. marks on one, attendance on another), merge them into one student list */
+function sheetRows(ws){return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""}).map(r=>r.map(c=>{if(c instanceof Date){const d=new Date(c.getTime()+12*3600e3);return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear()}return String(c??"")}))}
+function mergeSheets(wb){
+ const S=wb.SheetNames.map(n=>sheetRows(wb.Sheets[n]).filter(a=>a.some(c=>String(c).trim()!==""))).filter(r=>r.length&&r[0].map(roleOf).includes("name"));
+ if(!S.length)return sheetRows(wb.Sheets[wb.SheetNames[0]]);
+ const H=S[0][0].slice(),rows=S[0].slice(1).map(a=>a.slice()),hr=H.map(roleOf),ni=hr.indexOf("name"),ri=hr.indexOf("reg");
+ const nk=s=>String(s??"").trim().toLowerCase();
+ const find=(reg,name)=>rows.find(r=>(reg&&ri>=0&&nk(r[ri])===nk(reg))||(name&&nk(r[ni])===nk(name)));
+ S.slice(1).forEach(sh=>{const ro=sh[0].map(roleOf),sn=ro.indexOf("name"),sr=ro.indexOf("reg");
+  const cmap=sh[0].map((h,j)=>{if(["name","reg","sno"].includes(ro[j])||String(h).trim()==="")return -1;let k=H.findIndex(x=>nk(x)===nk(h));if(k<0){H.push(h);k=H.length-1}return k});
+  sh.slice(1).forEach(a=>{const name=String(a[sn]??"").trim(),reg=sr>=0?String(a[sr]??"").trim():"";if(!name)return;
+   let t=find(reg,name);if(!t){t=[];t[ni]=name;if(ri>=0)t[ri]=reg;rows.push(t)}
+   cmap.forEach((k,j)=>{if(k>=0&&String(a[j]??"").trim()!=="")t[k]=a[j]})})});
+ return [H,...rows]}
+const _ev8=entryView;
+entryView=function(m){_ev8(m);const nf=$("#nf");if(!nf)return;
+ nf.onchange=async e=>{const f=e.target.files[0];if(!f)return;try{
+  if(/\.xlsx?$/i.test(f.name)){if(typeof XLSX==="undefined")throw new Error("Excel reader did not load");addRows(mergeSheets(XLSX.read(await f.arrayBuffer(),{cellDates:true})),true)}
+  else addNames(await f.text(),true)}catch(x){alert("Could not read the file: "+(x.message||x))}e.target.value=""}};
+
+/* 3) Report: editable (details, marks, attendance for every date) */
+R.edit=false;
+const _rvE=repView;
+repView=function(m){_rvE(m);const g=groups().find(x=>x.k===R.open),bar=$("#dw");if(!g||!bar)return;
+ const row=bar.parentElement;
+ row.insertAdjacentHTML("afterbegin",`<button class="b sm" id="ed">${R.edit?"Cancel editing":"✎ Edit report"}</button>`);
+ $("#ed").onclick=()=>{R.edit=!R.edit;repView(m)};
+ if(!R.edit)return;
+ const prev=row.nextElementSibling;if(prev)prev.style.display="none";
+ const I=info(g),L=g.a[g.a.length-1],mine=g.a.filter(e=>e.by===uid||isAdmin());
+ const inp=(id,lab,v)=>`<div><label>${lab}</label><input id="r_${id}" value="${esc(v)}"></div>`;
+ const cols=MK_ORDER.concat(["m"]);
+ const modes=["Coaching Class","Assignment","Retest","Seminar"];
+ const sel=(i,j,v)=>`<select data-si="${i}" data-d="${j}" style="width:62px;padding:3px"><option ${v==="P"?"selected":""}>P</option><option ${v==="A"?"selected":""}>A</option>${v==="-"?"<option selected>-</option>":""}</select>`;
+ const html=`<div class="card" id="edbox"><h2>Edit report</h2>
+ ${mine.length?(mine.length<g.a.length?`<div class="msg">You can change ${mine.length} of ${g.a.length} sessions (only the ones you created); the rest stay as they are.</div>`:""):`<div class="msg err">This report was created by another user – view only.</div>`}
+ <div class="grid">${inp("fac","Faculty name",I.fac)}${inp("desig","Designation",I.des)}${inp("subj","Course name",I.subj)}${inp("code","Course code",I.code)}${inp("ysem","Year / Sem",I.ys)}
+ <div><label>Mode of coaching</label><select id="r_mode">${modes.map(o=>`<option ${o===I.mode?"selected":""}>${o}</option>`).join("")}</select></div></div>
+ <label style="margin-top:10px">Details of the implementation</label><textarea id="r_impl" rows="3">${esc([...new Set(g.a.map(e=>e.impl).filter(Boolean))].join("\n"))}</textarea>
+ <label style="margin-top:10px">Strategy plan – before &amp; after</label><textarea id="r_strat" rows="3">${esc(L.strat||"")}</textarea>
+ <h3 style="margin:14px 0 6px;font-size:14px">Students – register no, name, marks &amp; attendance (all dates)</h3>
+ <div class="sc" style="max-height:480px;overflow:auto"><table><tr><th>#</th><th>Register no</th><th>Name</th>${cols.map(k=>`<th>${MH[k]}</th>`).join("")}${g.a.map(e=>`<th>${fd(e.date).slice(0,5)}</th>`).join("")}</tr>
+ ${I.rows.map((s,i)=>`<tr><td>${i+1}</td><td><input data-si="${i}" data-f="r" value="${esc(s.r)}" style="width:120px"></td><td><input data-si="${i}" data-f="n" value="${esc(s.n)}" style="width:190px"></td>${cols.map(k=>`<td><input data-si="${i}" data-f="${k}" value="${esc(k==="m"?s.m:(s.mk||{})[k])}" style="width:62px"></td>`).join("")}${g.a.map((e,j)=>`<td>${sel(i,j,stat(e,s))}</td>`).join("")}</tr>`).join("")}</table></div>
+ <div class="row" style="margin-top:10px"><button class="b p" id="r_save" ${mine.length?"":"disabled"}>Save changes</button><button class="b" id="r_cancel">Cancel</button><span class="mu" id="r_st"></span></div></div>`;
+ row.insertAdjacentHTML("afterend",html);
+ $("#r_cancel").onclick=()=>{R.edit=false;repView(m)};
+ const val=(i,f)=>document.querySelector(`[data-si="${i}"][data-f="${f}"]`).value.trim();
+ $("#r_save").onclick=async()=>{const st=$("#r_st");st.textContent="Saving…";
+  const hd={fac:$("#r_fac").value.trim()||I.fac,desig:$("#r_desig").value.trim(),subj:$("#r_subj").value.trim()||I.subj,code:$("#r_code").value.trim(),ysem:$("#r_ysem").value.trim()||"I/II",mode:$("#r_mode").value,impl:$("#r_impl").value,strat:$("#r_strat").value};
+  try{await Promise.all(mine.map(e=>{const j=g.a.indexOf(e);
+   const stu=(e.stu||[]).map(nz).map(s=>{const i=I.rows.findIndex(x=>sk(x)===sk(s));if(i<0)return s;const mk={};MK_ORDER.forEach(k=>{const v=val(i,k);if(v!=="")mk[k]=v});
+    const o={...s,r:val(i,"r"),n:val(i,"n")||s.n,m:val(i,"m"),mk};const a=document.querySelector(`[data-si="${i}"][data-d="${j}"]`);if(a&&a.value!=="-")o.p=a.value==="P";return o});
+   return db.collection("sessions").doc(e.id).update({...hd,stu,updatedAt:Date.now()})}));
+   R.edit=false;R.open=null;alert("Report updated.");repView(m)}catch(x){st.textContent="Save failed: "+(x.message||x.code)}}};
+</script>
 </body></html>
