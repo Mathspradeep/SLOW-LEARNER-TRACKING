@@ -358,7 +358,7 @@ entryView=function(m){_ev5(m);const w=$("#week");if(!w)return;
 </script>
 <script>
 /* Admin accounts that can open the History tab (also set the same emails in the Firestore rules) */
-const ADMINS=[];
+const ADMINS=["pradeepkumar.t@kgkite.ac.in","vaanmathi.m@kgkite.ac.in","hodsh@kgkite.ac.in"];
 const isAdmin=()=>{const u=auth.currentUser;return !!(u&&u.email&&ADMINS.map(x=>x.toLowerCase()).includes(u.email.toLowerCase()))};
 function logAct(action,d={}){try{const u=auth.currentUser;if(!u)return;fs.collection("logs").add({t:Date.now(),uid:u.uid,email:u.email||"",name:u.displayName||"",action,cls:d.cls||"",subj:d.subj||"",date:d.date||"",detail:d.detail||""}).catch(()=>{})}catch(e){}}
 try{const DR=firebase.firestore.DocumentReference.prototype;
