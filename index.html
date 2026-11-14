@@ -205,7 +205,7 @@ function pagesHTML(g,img){const I=info(g);const N=27;
  const p2=ch(g.a).map(([r,o],k,A)=>pg(`${head}${inf("SLOW LEARNERS COACHING SCHEDULE")}<table class="k">${th(["S.NO","DATE","TIME","SUBJECT NAME","MODE OF COACHING (Assignment/ Retest/ Seminar/ Coaching Class)"])}${r.map((e,i)=>`<tr><td>${o+i+1}</td><td>${fd(e.date)}</td><td>${esc(trg(e))}</td><td>${esc(e.subj)}</td><td>${esc(e.mode||"Coaching Class")}</td></tr>`).join("")}</table>${sig("ACADEMIC COORDINATOR")}`)).join("");
  const cw=g.a.length>4;const DG=[];for(let i=0;i<g.a.length;i+=10)DG.push(g.a.slice(i,i+10));
  const p3=DG.map(dg=>ch(I.rows).map(([r,o],k,A)=>pg(`${head}${inf("SLOW LEARNERS ATTENDANCE")}<table class="k"><tr><th rowspan="2">S.NO</th><th rowspan="2">REGISTER NO</th><th rowspan="2">STUDENT NAME</th><th colspan="${dg.length}">STUDENT SIGNATURE WITH DATE${cw?" (P = Present, A = Absent)":""}</th></tr><tr>${dg.map(e=>`<th style="font-size:${cw?9.5:12}px;padding:2px 1px">${cw?fd(e.date).slice(0,5):fd(e.date)}</th>`).join("")}</tr>${r.map((s,i)=>`<tr><td>${o+i+1}</td><td>${esc(s.r)}</td><td class="l">${esc(s.n)}</td>${dg.map(e=>{const v=stat(e,s);return `<td style="color:${v=="A"?"#c00":"#070"};font-weight:bold;${cw?"padding:2px 0":""}">${cw?v:(v=="P"?"Present":v=="A"?"Absent":"-")}</td>`}).join("")}</tr>`).join("")}</table>${sig("FACULTY INCHARGE","*Note: Mark Statement have to be attached for Assignment/ Retest/ Seminar (if conducted)")}`)).join("")).join("");
- const photoRow=e=>`<div style="margin-bottom:6px"><div style="font-weight:bold;font-size:11.5px;text-align:left">Date: ${fd(e.date)} · Period ${esc(e.period.split(" ")[0])} · ${esc(trg(e))}</div><div style="display:flex;gap:6px">${(e.photos||[]).slice(0,2).map(p=>`<div style="width:49%"><img src="${img(p)}" style="width:100%;height:150px;object-fit:cover;display:block"><div style="font-size:9.5px;text-align:left">${p.lat!=null?"Lat "+p.lat.toFixed(5)+", Lon "+p.lng.toFixed(5):"Location unavailable"} · ${new Date(p.ts).toLocaleString("en-IN")}</div></div>`).join("")}</div></div>`;
+ const photoRow=e=>`<div style="margin-bottom:6px"><div style="font-weight:bold;font-size:11.5px;text-align:left">Date: ${fd(e.date)} · ${esc(pl(e))} · ${esc(trg(e))}</div><div style="display:flex;gap:6px">${(e.photos||[]).slice(0,2).map(p=>`<div style="width:49%"><img src="${img(p)}" style="width:100%;height:150px;object-fit:cover;display:block"><div style="font-size:9.5px;text-align:left">${p.lat!=null?"Lat "+p.lat.toFixed(5)+", Lon "+p.lng.toFixed(5):"Location unavailable"} · ${new Date(p.ts).toLocaleString("en-IN")}</div></div>`).join("")}</div></div>`;
  const rest=g.a.slice(2);const p5=[];for(let i=0;i<rest.length;i+=4)p5.push(pg(`${head}<h4 class="ct">IMAGES / SCREENSHOT OF THE PRACTICE (CONTD.)</h4><p style="margin:2px 0 8px;font-size:12px"><b>Course :</b> ${esc(I.code)} – ${esc(I.subj)}</p>${rest.slice(i,i+4).map(photoRow).join("")}<div class="sgf" style="display:flex;justify-content:space-between;font-weight:bold;font-size:13.5px"><span>Signature of Faculty Member</span><span>HOD</span></div>`));
 
  const impl=[...new Set(g.a.map(e=>e.impl).filter(Boolean))].join("\n");
@@ -251,7 +251,7 @@ async function mkDocx(g){if(typeof docx==="undefined")throw new Error("Word libr
  const S3=pg([...inf("SLOW LEARNERS ATTENDANCE"),...(cw?[P("STUDENT SIGNATURE WITH DATE  (P = Present, A = Absent)",{al:C_,b:1,sz:20,sp:60})]:[]),tbl(["S.NO","REGISTER NO","STUDENT NAME",...g.a.map(e=>cw?fd(e.date).slice(0,5):"SIGNATURE WITH DATE\n"+fd(e.date))],ws3,I.rows.map((s,i)=>[Cl(String(i+1),ws3[0],cw?{mx:20}:{}),Cl(s.r,ws3[1],cw?{mx:30}:{}),Cl(s.n,ws3[2],{al:AlignmentType.LEFT,...(cw?{mx:40}:{})}),...g.a.map(e=>{const v=stat(e,s);return Cl(cw?v:(v=="P"?"Present":v=="A"?"Absent":"-"),dw,{b:1,c:v=="A"?"CC0000":"007700",...(cw?{mx:20}:{})})})]),cw?15:20)],[sig("FACULTY INCHARGE"),P("*Note: Mark Statement have to be attached for Assignment/ Retest/ Seminar (if conducted)",{sz:18})]);
  const pics=[];
  for(const e of g.a){const ps=(e.photos||[]).slice(0,2);if(!ps.length)continue;
-  pics.push(P("Date: "+fd(e.date)+" · Period "+e.period.split(" ")[0]+" · "+trg(e),{b:1,sz:19,sp:30,al:AlignmentType.LEFT,kn:true}));
+  pics.push(P("Date: "+fd(e.date)+" · "+pl(e)+" · "+trg(e),{b:1,sz:19,sp:30,al:AlignmentType.LEFT,kn:true}));
   const runs=[],caps=[];
   for(const p of ps){const buf=new Uint8Array(await (await fetch(p.url)).arrayBuffer());const bm=await createImageBitmap(new Blob([buf]));const s=Math.min(235/bm.width,175/bm.height);
    runs.push(new ImageRun({data:buf,type:"jpg",transformation:{width:Math.round(bm.width*s),height:Math.round(bm.height*s)}}),new TextRun({text:"   "}));
@@ -280,7 +280,7 @@ save=async function(){if(!F.editId)return _sv2();
  F={...F,editId:null,subj:"",topic:"",stu:[],photos:[],impl:"",strat:""};R.open=null;view="rep";document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.v==="rep"));render()}catch(x){$("#fm").innerHTML=`<div class="msg err">Update failed: ${esc(x.message||x.code)}</div>`}};
 const _rv=repView;
 repView=function(m){_rv(m);const g=groups().find(x=>x.k===R.open);const bar=$("#dw");if(!g||!bar)return;
- bar.parentElement.insertAdjacentHTML("beforebegin",`<div class="noprint" style="margin:8px 0"><b>Sessions in this report</b>${g.a.map(e=>`<div class="stu"><span>${fd(e.date)} · ${esc(trg(e))} · ${esc(e.period)} · ${esc(e.topic)}</span><span class="t">${e.by===uid||isAdmin()?`${e.by!==uid?`<span class="mu" style="margin-right:6px">${esc(e.byEmail||e.fac)}</span>`:""}<button data-ed="${e.id}">Edit</button><button data-dl="${e.id}">Delete</button>`:`<span class="mu">${esc(e.byEmail||e.fac)} · view only</span>`}</span></div>`).join("")}</div>`);
+ bar.parentElement.insertAdjacentHTML("beforebegin",`<div class="noprint" style="margin:8px 0"><b>Sessions in this report</b>${g.a.map(e=>`<div class="stu"><span>${fd(e.date)} · ${esc(trg(e))} · ${esc(pl(e))} · ${esc(e.topic)}</span><span class="t">${e.by===uid||isAdmin()?`${e.by!==uid?`<span class="mu" style="margin-right:6px">${esc(e.byEmail||e.fac)}</span>`:""}<button data-ed="${e.id}">Edit</button><button data-dl="${e.id}">Delete</button>`:`<span class="mu">${esc(e.byEmail||e.fac)} · view only</span>`}</span></div>`).join("")}</div>`);
  m.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>editEntry(b.dataset.ed));
  m.querySelectorAll("[data-dl]").forEach(b=>b.onclick=async()=>{if(confirm("Delete this session entry permanently?"+(isAdmin()?" (Admin action – it will be recorded in History.)":""))){try{await db.collection("sessions").doc(b.dataset.dl).delete()}catch(x){alert("Delete failed: "+x.message)}}})};
 </script>
@@ -492,8 +492,15 @@ save=async function(){const was=!!F.editId,cls=F.cls,d=F.date;const fm=$("#fm");
 const PT={"1":["08:30","09:20"],"2":["09:20","10:10"],"3":["10:30","11:20"],"4":["11:20","12:10"],"5":["13:00","13:50"],"6":["13:50","14:40"],"7":["14:50","15:40"],"8":["15:40","16:30"]};
 const trg=e=>(e.tfrom&&e.tto)?e.tfrom+"–"+e.tto:(e["hour"]||String(e.period||"").replace(/^\d+\s*·\s*/,""));
 const _ev10=entryView;
-entryView=function(m){_ev10(m);const f=$("#tfrom"),t=$("#tto");if(f)f.oninput=f.onchange=e=>{F.tfrom=e.target.value};if(t)t.oninput=t.onchange=e=>{F.tto=e.target.value};
- const pe=$("#period");if(pe)pe.addEventListener("change",()=>{const x=PT[String(pe.value).trim().charAt(0)];if(x){F.tfrom=x[0];F.tto=x[1];if(f)f.value=x[0];if(t)t.value=x[1]}})};
+const pl=e=>/^\d/.test(e.period||"")?"Period "+String(e.period).split(" ")[0]:"Custom time";
+entryView=function(m){_ev10(m);const f=$("#tfrom"),t=$("#tto"),pe=$("#period");if(!pe||!f||!t)return;
+ pe.insertAdjacentHTML("beforeend",'<option value="Custom">Custom time (enter from – to)</option>');
+ const x0=PT[String(F.period||"").charAt(0)];
+ if(F.period!=="Custom"&&x0&&F.tfrom&&F.tto&&(F.tfrom!==x0[0]||F.tto!==x0[1]))F.period="Custom";
+ pe.value=F.period;
+ const lock=()=>{const c=F.period==="Custom";f.readOnly=t.readOnly=!c;f.style.opacity=t.style.opacity=c?"1":".6"};lock();
+ f.oninput=f.onchange=e=>{F.tfrom=e.target.value};t.oninput=t.onchange=e=>{F.tto=e.target.value};
+ pe.addEventListener("change",()=>{const v=pe.value;F.period=v;if(v==="Custom"){lock();f.focus();return}const x=PT[String(v).trim().charAt(0)];if(x){F.tfrom=x[0];F.tto=x[1];f.value=x[0];t.value=x[1]}lock()})};
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
